@@ -1,4 +1,7 @@
 const User = require("../models/User");
+const Cart = require("../models/Cart");
+const Wishlist = require("../models/Wishlist");
+const Order = require("../models/Order");
 const generateToken = require("../utils/generateToken");
 const asyncHandler = require("../middleware/asyncHandler");
 
@@ -102,9 +105,43 @@ const getCustomerUsers = asyncHandler(async (_req, res) => {
   });
 });
 
+const deleteCustomerUser = asyncHandler(async (req, res) => {
+  const session = await User.startSession();
+
+  try {
+    await session.withTransaction(async () => {
+      const user = await User.findById(req.params.userId).session(session);
+
+      if (!user) {
+        res.status(404);
+        throw new Error("User not found");
+      }
+
+      if (user.userType !== "customer") {
+        res.status(400);
+        throw new Error("Only customer accounts can be deleted");
+      }
+
+      await Promise.all([
+        Cart.deleteOne({ user: user._id }, { session }),
+        Wishlist.deleteOne({ user: user._id }, { session }),
+        Order.deleteMany({ user: user._id }, { session }),
+        user.deleteOne({ session }),
+      ]);
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  res.json({
+    message: "Customer deleted successfully",
+  });
+});
+
 module.exports = {
   registerUser,
   loginUser,
   getCurrentUser,
   getCustomerUsers,
+  deleteCustomerUser,
 };
