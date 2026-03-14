@@ -12,6 +12,7 @@ const router = express.Router();
 router.use(protect);
 
 router.route("/").post(createOrder).get(getMyOrders);
+router.get("/my", getMyOrders);
 router.get("/:orderId", getOrderById);
 
 module.exports = router;
