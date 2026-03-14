@@ -5,6 +5,19 @@ const asyncHandler = require("../middleware/asyncHandler");
 const { uploadImage, removeImage } = require("../utils/uploadToCloudinary");
 
 const normalizeText = (value) => String(value ?? "").trim();
+const buildProductResponse = (product, wishlistProductIds = new Set()) => {
+  const safeProduct = product.toObject();
+  safeProduct.inWishlist = wishlistProductIds.has(product._id.toString());
+  return safeProduct;
+};
+const getWishlistProductIds = async (userId) => {
+  if (!userId) {
+    return new Set();
+  }
+
+  const wishlist = await Wishlist.findOne({ user: userId }).select("products");
+  return new Set((wishlist?.products || []).map((productId) => productId.toString()));
+};
 
 const createProduct = asyncHandler(async (req, res) => {
   const { productName, productPrice, stock, productDescription } = req.body;
@@ -58,12 +71,13 @@ const createProduct = asyncHandler(async (req, res) => {
   });
 });
 
-const getAllProducts = asyncHandler(async (_req, res) => {
+const getAllProducts = asyncHandler(async (req, res) => {
   const products = await Product.find().sort({ createdAt: -1 });
+  const wishlistProductIds = await getWishlistProductIds(req.user?._id);
 
   res.json({
     count: products.length,
-    products,
+    products: products.map((product) => buildProductResponse(product, wishlistProductIds)),
   });
 });
 
@@ -75,7 +89,11 @@ const getSingleProduct = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  res.json({ product });
+  const wishlistProductIds = await getWishlistProductIds(req.user?._id);
+
+  res.json({
+    product: buildProductResponse(product, wishlistProductIds),
+  });
 });
 
 const updateProduct = asyncHandler(async (req, res) => {

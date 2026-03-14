@@ -7,15 +7,18 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controllers/productController");
-const { protect, adminOnly } = require("../middleware/authMiddleware");
+const { protect, optionalProtect, adminOnly } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-router.route("/").get(getAllProducts).post(protect, adminOnly, upload.single("productImage"), createProduct);
+router
+  .route("/")
+  .get(optionalProtect, getAllProducts)
+  .post(protect, adminOnly, upload.single("productImage"), createProduct);
 router
   .route("/:productId")
-  .get(getSingleProduct)
+  .get(optionalProtect, getSingleProduct)
   .patch(protect, adminOnly, upload.single("productImage"), updateProduct)
   .delete(protect, adminOnly, deleteProduct);
 
