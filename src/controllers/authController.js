@@ -93,8 +93,18 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   });
 });
 
+const getCustomerUsers = asyncHandler(async (_req, res) => {
+  const users = await User.find({ userType: "customer" }).sort({ createdAt: -1 });
+
+  res.json({
+    count: users.length,
+    users: users.map(buildUserResponse),
+  });
+});
+
 module.exports = {
   registerUser,
   loginUser,
   getCurrentUser,
+  getCustomerUsers,
 };
