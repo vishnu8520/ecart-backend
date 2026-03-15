@@ -110,6 +110,47 @@ const increaseCartQuantity = asyncHandler(async (req, res) => {
   });
 });
 
+const decreaseCartQuantity = asyncHandler(async (req, res) => {
+  const quantity = parseQuantity(req.body.quantity);
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    res.status(400);
+    throw new Error("quantity must be a positive integer");
+  }
+
+  const cart = await Cart.findOne({ user: req.user._id });
+
+  if (!cart) {
+    res.status(404);
+    throw new Error("Cart not found");
+  }
+
+  const item = cart.items.find((cartItem) => cartItem.product.toString() === req.params.productId);
+
+  if (!item) {
+    res.status(404);
+    throw new Error("Product not found in cart");
+  }
+
+  const updatedQuantity = item.quantity - quantity;
+
+  if (updatedQuantity > 0) {
+    item.quantity = updatedQuantity;
+  } else {
+    cart.items = cart.items.filter(
+      (cartItem) => cartItem.product.toString() !== req.params.productId
+    );
+  }
+
+  await cart.save();
+  await cart.populate("items.product", "productName productPrice productImage stock");
+
+  res.json({
+    message: updatedQuantity > 0 ? "Cart quantity updated" : "Item removed from cart",
+    cart,
+  });
+});
+
 const removeItemFromCart = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ user: req.user._id });
 
@@ -144,5 +185,6 @@ module.exports = {
   getMyCart,
   addProductToCart,
   increaseCartQuantity,
+  decreaseCartQuantity,
   removeItemFromCart,
 };
